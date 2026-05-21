@@ -1,46 +1,41 @@
 /* global Office, Excel, document */
-
-const GEMINI_API_KEY = "AIzaSyDd93frsqmmwybBpjBvOIC4_5A9pOIDLhg";
-
 // 🔥 Cache storage
 let lastInput = "";
 let lastResult = null;
 
-async function askAI(prompt) {
-  // ✅ CACHE HIT (no API call)
-  if (prompt === lastInput && lastResult) {
-    console.log("Cache hit - skipping API call");
-    return lastResult;
-  }
+const GROQ_API_KEY = "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";
 
+async function askAI(prompt) {
   try {
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-        GEMINI_API_KEY,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + GROQ_API_KEY
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7
+      })
+    });
 
     const data = await res.json();
 
-    if (!res.ok) return "HTTP Error: " + res.status;
-    if (data.error) return "API Error: " + data.error.message;
+    console.log("Groq response:", data);
 
-    const result =
-      data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+    if (!res.ok) {
+      return "HTTP Error: " + res.status + " - " + (data.error?.message || "");
+    }
 
-    // 💾 STORE CACHE
-    lastInput = prompt;
-    lastResult = result;
-
-    return result;
-  } catch (e) {
-    return "Fetch Error: " + e.message;
+    return data.choices?.[0]?.message?.content || "No response from AI";
+  } catch (err) {
+    return "Fetch Error: " + err.message;
   }
 }
 
